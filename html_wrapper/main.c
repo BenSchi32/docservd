@@ -15,11 +15,15 @@
 #define PRINT_FUNCTION(f) printf("%s fehlgeschlagen:\n", f)
 #define CHECK_ZERO(x) if((x) != 0) {PRINT_FUNCTION(#x); perror("");}
 #define CHECK_NEGNONZERO(x) if((x) <= 0) {PRINT_FUNCTION(#x); perror("");}
+#define DEST_PATH "../documents/" 
+#define DEST_PATH_LEN 13
 
 void convert_file_name(char *file_name) {
 	char *dot;
 	CHECK_NEGNONZERO(dot = strchr(file_name, '.'));
-	*dot = '\0';
+
+	if(dot != NULL && dot != file_name)
+		*dot = '\0';
 
 	strncat(file_name, ".html", 6);
 }
@@ -27,23 +31,36 @@ void convert_file_name(char *file_name) {
 void wrap(char *output_fname, char content[], int content_size) {
 	int output_fd;
 	int* newlines;
-	int count_newlines;
+	int count_newlines, output_fname_len;
 	FILE* file;
-	char *html_header, *html_body, *html_footer, *html_content;
+	char *html_header_begin, *html_header_end, *html_body, *html_footer, *html_content, *html_css;
+	char *output_file_path;
 
 	++newlines;
 	newlines = kmp_search(NEWLINE, content, content_size);
 	--newlines;
+
 	convert_file_name(output_fname);
-	file = fopen(output_fname, "w");
-	perror("fopen");
+
+	output_fname_len = strlen(output_fname);
+	output_file_path = malloc(output_fname_len + DEST_PATH_LEN + 1);
+	*(output_file_path + output_fname_len + DEST_PATH_LEN + 1) = 0;
+	strncpy(output_file_path, DEST_PATH, DEST_PATH_LEN);
+	strncpy(output_file_path + DEST_PATH_LEN, output_fname, output_fname_len);
+
+	printf("%s\n", output_file_path);
+
+	file = fopen(output_file_path, "w");
+	perror("Opening file");
 
 	count_newlines = 0;
 	for(int i=1; *(newlines+i) != 0;++i) ++count_newlines;
 
-	html_header = "<html>\n<head>\n\t<title>";
-	html_body = "</title>\n</head>\n<body>\n\t<p>\n";
-	html_footer = "\n\t</p>\n</body>\n</html>";
+	html_header_begin = "<html>\n<head>\n\t<title>";
+	html_header_end = "</title>";
+	html_css = "<style>\n\tbody{background-color:black;}\n\tp{color:white;}\n</style>";
+	html_body = "</head>\n<body>\n\t<p>\n";
+	html_footer = "\n\t</p>\n\t<a href=\"../index.html\">Home</a>\n</body>\n</html>";
 	html_content = malloc(content_size + BR_LENGTH * count_newlines + 1);
 
 	for(int i=0;i<count_newlines;++i) {
@@ -53,10 +70,13 @@ void wrap(char *output_fname, char content[], int content_size) {
 		++newlines;
 	}
 	
-	fprintf(file, "%s%s%s%s%s", html_header, output_fname, html_body, html_content, html_footer);
-	perror("fprintf");
+	fprintf(file, "%s%s%s%s%s%s%s", html_header_begin, output_fname, html_header_end, html_css, html_body, html_content, html_footer);
+	perror("Writing into file");
 
+	free(html_content);
 	fclose(file);
+
+	return;
 }
 
 int main(int argc, char** argv) {
@@ -68,6 +88,7 @@ int main(int argc, char** argv) {
 
 	if(argc <= 1) {
 		printf("Please provide a file to convert!\n");
+		printf("Usage: wrap <filename>\n");
 		return 0;
 	}
 
@@ -78,17 +99,17 @@ int main(int argc, char** argv) {
 	CHECK_ZERO(fstat(file_fd, &file_stats));
 	file_length = file_stats.st_size+1;
 
-	printf("%d %s %d\n", file_fd, file_name, file_length);
+	printf("Wrapping %s\n", file_name);
 
 	char content[CONTENT_LENGTH];
 	CHECK_NEGNONZERO(read(file_fd, content, CONTENT_LENGTH));
 
 	content[CONTENT_LENGTH-1] = '\0';
 
-	printf("%s\n", content);
 	close(file_fd);
 
 	wrap(file_name, content, CONTENT_LENGTH);
+	free(file_name);
 
 	return 0;
 }

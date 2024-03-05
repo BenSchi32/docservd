@@ -9,10 +9,13 @@
 #include <strings.h>
 
 #define STDERR 2
-#define DIR_PATH "../documents"
-#define INDEX_FILE "../index.html"
+#define DIR_PATH "/var/mydocs/documents"
+#define INDEX_FILE "/var/mydocs/index.html"
 #define EOB "/body"
 #define DOTFILE '.'
+#define LINK_TAG_BEGIN "\t<a href=\"/var/mydocs/documents/"
+#define LINK_TAG_END "\">"
+#define LINK_TAG_CLOSE "</a><br>\n"
 
 /* Komplett behindert oba funktioniert do */
 int end_of_body(char buffer[], const int buffer_len) {
@@ -35,20 +38,26 @@ int file_created_handler(char *file_name) {
 	/* Creats a new <a href="<file_path>"> <filename> </a> entry in index.html */
 	FILE *index_file;
 	struct stat statbuf;
+	int index_file_len;
+	int end_id;
+	int last_section_len; 
+	int first_part_len, second_part_len, third_part_len;
+	int file_name_len, link_buffer_len;
 
 	index_file = fopen(INDEX_FILE, "r+");
 	stat(INDEX_FILE, &statbuf);
-	const int index_file_len = statbuf.st_size + 1;
+	index_file_len = statbuf.st_size + 1;
 
-	char buffer[index_file_len];
+	char buffer[(const int) index_file_len];
 	bzero(buffer, index_file_len);
 
 	fread(buffer, index_file_len-1, 1, index_file);
 
-	const int end_id = end_of_body(buffer, index_file_len) - 1;
-	const int last_section_len = index_file_len - end_id;
-	char first_section[end_id + 1];
-	char last_section[last_section_len + 1];
+	end_id = end_of_body(buffer, index_file_len) - 1;
+	last_section_len = index_file_len - end_id;
+
+	char first_section[(const int) end_id + 1];
+	char last_section[(const int) last_section_len + 1];
 	bzero(first_section, end_id + 1);
 	bzero(last_section, last_section_len + 1);
 
@@ -59,23 +68,21 @@ int file_created_handler(char *file_name) {
 
 	index_file = fopen(INDEX_FILE, "w+");
 
-	char *first_part = "\t<a href=\"documents/";
-	char *second_part = "\">";
-	char *third_part = "</a><br>\n";
-	const int first_part_len = strlen(first_part);
-	const int second_part_len = strlen(second_part);
-	const int third_part_len = strlen(third_part);
-	const int file_name_len = strlen(file_name);
+	first_part_len = strlen(LINK_TAG_BEGIN);
+	second_part_len = strlen(LINK_TAG_END);
+	third_part_len = strlen(LINK_TAG_CLOSE);
+	file_name_len = strlen(file_name);
 
-	const int link_buffer_len = first_part_len + second_part_len + third_part_len + file_name_len * 2;
+	link_buffer_len = first_part_len + second_part_len + third_part_len + file_name_len * 2;
 
-	char link_buffer[link_buffer_len];
+	char link_buffer[(const int) link_buffer_len];
 	bzero(link_buffer, link_buffer_len);
-	strncat(link_buffer, first_part, first_part_len);
+
+	strncat(link_buffer, LINK_TAG_BEGIN, first_part_len);
 	strncat(link_buffer, file_name, file_name_len);
-	strncat(link_buffer, second_part, second_part_len);	
+	strncat(link_buffer, LINK_TAG_END, second_part_len);	
 	strncat(link_buffer, file_name, file_name_len);
-	strncat(link_buffer, third_part, third_part_len);
+	strncat(link_buffer, LINK_TAG_CLOSE, third_part_len);
 
 	fprintf(index_file, "%s%s%s", first_section, link_buffer, last_section);
 

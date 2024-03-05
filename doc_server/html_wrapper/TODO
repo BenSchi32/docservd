@@ -1,2 +1,0 @@
-- kmp-search doesnt work on files with NULL-characters in it.
-- Buffer should not be the size of the file

@@ -133,6 +133,9 @@ section .data
 	SendFileExceptionMsg db "[X] Sending file failed!", 10, 0
 	SendFileExceptionMsgLen equ $ - SendFileExceptionMsg
 
+	StatExceptionMsg db "[X] Reading stats of file failed!", 10, 0
+	StatExceptionMsgLen equ $ - StatExceptionMsg
+
 	address dw AF_INET
 			dw 0x901f
 			dd 0
@@ -147,8 +150,8 @@ section .data
 			 db  13, 10
 ;			 db "<head><title>hallo</title></head><h1> omh </h1>", 10
 	response_len equ $ - response
-	index_file_name db "index.html", 0
-	open_error_file db "open_error.html", 0
+	index_file_name db "/var/mydocs/index.html", 0
+	open_error_file db "/var/mydocs/errors/open_file_error.html", 0
 	file_path_indicator db "ET /", 0
 	file_request: times REQUEST_LEN db 0
 	requested_file_path: times PATH_LEN db 0
@@ -178,7 +181,7 @@ accept_loop:
 	cmp rax, ERROR
 	jle SendFileException
 
-	print file_request, REQUEST_LEN
+;	print file_request, REQUEST_LEN
 
 	call extract_file_name
 
@@ -203,25 +206,43 @@ accept_loop:
 
 	cmp byte [requested_file_path], 0
 	jne .open_path
-	open index_file_name, 0x09	
-	jmp .check_open
+
+.index_path:
+	open index_file_name, 0x09
+	mov r14, rax
+	cmp r14, ERROR
+	jle .open_error_file
+	stat index_file_name, rsp
+	cmp rax, ERROR
+	jle StatException
+	jmp .save_file_len
+
 .open_path:
 	open requested_file_path, 0x09
-.check_open:
 	mov r14, rax
 	cmp r14, ERROR
 	jle .open_error_file
 	stat requested_file_path, rsp
-	jmp .file_stat
+	cmp rax, ERROR
+	jle StatException
+	jmp .save_file_len
+
 .open_error_file:
 	open open_error_file, 0x09
 	mov r14, rax
+	cmp r14, ERROR
+	jle OpenException
 	stat open_error_file, rsp
-.file_stat:
+	cmp rax, ERROR
+	jle StatException
+
+.save_file_len:
 	mov rbx, [rsp + 48]
+	push rbx
 
 	write r13, response, response_len
 
+	pop rbx
 	send_file r13, r14, rbx 
 	cmp rax, ERROR
 	jle SendFileException
@@ -286,6 +307,12 @@ OpenException:
 
 SendFileException:
 	print SendFileExceptionMsg, SendFileExceptionMsgLen
+	close r12
+	close r14
+	exit 1
+
+StatException:
+	print StatExceptionMsg, StatExceptionMsgLen
 	close r12
 	close r14
 	exit 1

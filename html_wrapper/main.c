@@ -15,9 +15,15 @@
 #define PRINT_FUNCTION(f) printf("%s fehlgeschlagen:\n", f)
 #define CHECK_ZERO(x) if((x) != 0) {PRINT_FUNCTION(#x); perror("");}
 #define CHECK_NEGNONZERO(x) if((x) <= 0) {PRINT_FUNCTION(#x); perror("");}
-#define DEST_PATH "../documents/" 
-#define DEST_PATH_LEN 13
+#define DEST_PATH "/var/mydocs/documents/" 
+#define DEST_PATH_LEN 22
+#define	HTML_HEADER_BEGIN "<html>\n<head>\n\t<title>"
+#define	HTML_HEADER_END "</title>"
+#define	HTML_CSS "<style>\n\tbody{background-color:black;}\n\tp{color:white;}\n</style>"
+#define	HTML_BODY "</head>\n<body>\n\t<p>\n"
+#define	HTML_FOOTER "\n\t</p>\n\t<a href=\"../index.html\">Home</a>\n</body>\n</html>"
 
+/* Dangerous because concatenating to a string with not enough space allocated (Undefined behavior */
 void convert_file_name(char *file_name) {
 	char *dot;
 	CHECK_NEGNONZERO(dot = strchr(file_name, '.'));
@@ -33,7 +39,7 @@ void wrap(char *output_fname, char content[], int content_size) {
 	int* newlines;
 	int count_newlines, output_fname_len;
 	FILE* file;
-	char *html_header_begin, *html_header_end, *html_body, *html_footer, *html_content, *html_css;
+	char *html_content;
 	char *output_file_path;
 
 	++newlines;
@@ -45,6 +51,7 @@ void wrap(char *output_fname, char content[], int content_size) {
 	output_fname_len = strlen(output_fname);
 	output_file_path = malloc(output_fname_len + DEST_PATH_LEN + 1);
 	*(output_file_path + output_fname_len + DEST_PATH_LEN + 1) = 0;
+
 	strncpy(output_file_path, DEST_PATH, DEST_PATH_LEN);
 	strncpy(output_file_path + DEST_PATH_LEN, output_fname, output_fname_len);
 
@@ -56,11 +63,6 @@ void wrap(char *output_fname, char content[], int content_size) {
 	count_newlines = 0;
 	for(int i=1; *(newlines+i) != 0;++i) ++count_newlines;
 
-	html_header_begin = "<html>\n<head>\n\t<title>";
-	html_header_end = "</title>";
-	html_css = "<style>\n\tbody{background-color:black;}\n\tp{color:white;}\n</style>";
-	html_body = "</head>\n<body>\n\t<p>\n";
-	html_footer = "\n\t</p>\n\t<a href=\"../index.html\">Home</a>\n</body>\n</html>";
 	html_content = malloc(content_size + BR_LENGTH * count_newlines + 1);
 
 	for(int i=0;i<count_newlines;++i) {
@@ -70,9 +72,10 @@ void wrap(char *output_fname, char content[], int content_size) {
 		++newlines;
 	}
 	
-	fprintf(file, "%s%s%s%s%s%s%s", html_header_begin, output_fname, html_header_end, html_css, html_body, html_content, html_footer);
+	fprintf(file, "%s%s%s%s%s%s%s", HTML_HEADER_BEGIN, output_fname, HTML_HEADER_END, HTML_CSS, HTML_BODY, html_content, HTML_FOOTER);
 	perror("Writing into file");
 
+	free(output_file_path);
 	free(html_content);
 	fclose(file);
 
